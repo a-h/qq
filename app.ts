@@ -8,28 +8,38 @@ const app = new App({
 
 const mockDb = new Map<string, Question>();
 
-const db = { 
-  get: async (id: string): Promise<Question | undefined> => {
-    return mockDb.get(id);
-  },
-  put: async (id: string, q: Question) => {
-    mockDb.set(id, q);
-  }
+const db = {
+	get: async (id: string): Promise<Question | undefined> => {
+		return mockDb.get(id);
+	},
+	put: async (id: string, q: Question) => {
+		mockDb.set(id, q);
+	},
+	deleteQuestionOption: async (questionId: string, questionOptionId: string): Promise<void> => {
+		//TODO: This mock example isn't thread safe.
+		const q = await db.get(questionId);
+		if (!q) {
+			return
+		}
+		q.options = q?.options.filter(o => o.questionOptionId != questionOptionId);
+		//TODO: Not strictly required. ;)
+		await db.put(questionId, q);
+	},
 };
 
 // insert an example question.
 const q: Question = {
-  questionId: "question123",
-  question: "What day is it?",
-  options: [
-    { questionOptionId: "questionOption1", text: "Monday" },
-    { questionOptionId: "questionOption2", text: "Tuesday" },
-    { questionOptionId: "questionOption3", text: "Wednesday" },
-    { questionOptionId: "questionOption4", text: "Thursday" },
-  ],
+	questionId: "question123",
+	question: "What day is it?",
+	options: [
+		{ questionOptionId: "questionOption1", text: "Monday" },
+		{ questionOptionId: "questionOption2", text: "Tuesday" },
+		{ questionOptionId: "questionOption3", text: "Wednesday" },
+		{ questionOptionId: "questionOption4", text: "Thursday" },
+	],
 };
 (async () => {
-  db.put(q.questionId, q);
+	db.put(q.questionId, q);
 })();
 
 interface Question {
@@ -53,7 +63,7 @@ const actionAddOption = "actionAddOption";
 const createQuestionBlock = (q: Question): Array<KnownBlock> => [
 	questionTextBlock(q),
 	questionOptionsHeaderBlock,
-	...q.options.map(qo => questionOptionBlock(qo)),
+	...q.options.map(qo => questionOptionBlock(q, qo)),
 	questionOptionAddBlock,
 	dividerBlock,
 	sendCancelBlock,
@@ -81,7 +91,7 @@ const questionOptionsHeaderBlock: KnownBlock = {
 	}
 };
 
-const questionOptionBlock = (o: QuestionOption): KnownBlock => ({
+const questionOptionBlock = (q: Question, o: QuestionOption): KnownBlock => ({
 	"type": "section",
 	"text": {
 		"type": "mrkdwn",
@@ -94,10 +104,24 @@ const questionOptionBlock = (o: QuestionOption): KnownBlock => ({
 			"text": ":bin:",
 			"emoji": true
 		},
-		"value": o.questionOptionId,
+		"value": getQuestionOptionBlockValueFromQuestionOptionId(q.questionId, o.questionOptionId),
 		"action_id": actionDelete,
 	}
 })
+
+interface QuestionIds {
+	questionId: string
+	questionOptionId: string
+}
+
+const getQuestionOptionIdFromQuestionOptionBlockValue = (v: string): QuestionIds => {
+	const ids = v.split("/");
+	return {
+		questionId: ids[0],
+		questionOptionId: ids[1],
+	}
+};
+const getQuestionOptionBlockValueFromQuestionOptionId = (questionId: string, questionOptionId: string): string => `${questionId}/${questionOptionId}`;
 
 const questionOptionAddBlock: KnownBlock = {
 	"dispatch_action": true,
@@ -142,37 +166,36 @@ const sendCancelBlock: KnownBlock = {
 }
 
 app.message('hello', async (params: SlackEventMiddlewareArgs<"message">) => {
-	console.log('received message');
 	const question = await db.get("question123");
-	if(!question) {
-	  return
+	if (!question) {
+		return
 	}
 	if (params.message.subtype === undefined) {
 		await params.say({
 			blocks: createQuestionBlock(question),
-			text: `Hey there <@${params.message.user}>!`
 		});
 	}
 });
 
 app.action(actionDelete, async ({ ack, body, respond }) => {
-	// Acknowledge the action
 	await ack();
 	if (body.type != "block_actions") {
 		return;
 	}
-	console.log("received action", { body });
-	// TODO: Get the question by ID.
-	const question = await db.get("question123");
-	if(!question) {
-	  return
+	for (const action of body.actions) {
+		if (action.type == "button") {
+			const id = getQuestionOptionIdFromQuestionOptionBlockValue(action.value);
+			await db.deleteQuestionOption(id.questionId, id.questionOptionId);
+			const question = await db.get(id.questionId);
+			if (!question) {
+				return
+			}
+		}
 	}
-	question.options[0].text = "Mon";
 	await respond({
 		blocks: createQuestionBlock(q),
 		replace_original: true,
 	});
-	//await say(`<@${body.user.id}> clicked the button`);
 });
 
 (async () => {
