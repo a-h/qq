@@ -1,9 +1,8 @@
-import { App, KnownBlock, LogLevel, SlackEventMiddlewareArgs } from '@slack/bolt';
+import { App, KnownBlock, SlackEventMiddlewareArgs } from '@slack/bolt';
 
 const app = new App({
 	token: process.env.SLACK_BOT_TOKEN,
 	signingSecret: process.env.SLACK_SIGNING_SECRET,
-	logLevel: LogLevel.DEBUG,
 });
 
 const mockDb = new Map<string, Question>();
@@ -12,18 +11,29 @@ const db = {
 	get: async (id: string): Promise<Question | undefined> => {
 		return mockDb.get(id);
 	},
-	put: async (id: string, q: Question) => {
+	put: async (id: string, q: Question): Promise<Question> => {
 		mockDb.set(id, q);
+		return q;
 	},
-	deleteQuestionOption: async (questionId: string, questionOptionId: string): Promise<void> => {
+	addQuestionOption: async (questionId: string): Promise<Question> => {
 		//TODO: This mock example isn't thread safe.
 		const q = await db.get(questionId);
 		if (!q) {
-			return
+			throw Error(`question ${questionId} not found`);
 		}
-		q.options = q?.options.filter(o => o.questionOptionId != questionOptionId);
-		//TODO: Not strictly required. ;)
-		await db.put(questionId, q);
+		q.options.push("");
+		//TODO: Not strictly required, since it's in-memory.
+		return await db.put(questionId, q);
+	},
+	setQuestionOption: async (questionId: string, index: number, text: string): Promise<Question> => {
+		//TODO: This mock example isn't thread safe.
+		const q = await db.get(questionId);
+		if (!q) {
+			throw Error(`question ${questionId} not found`);
+		}
+		q.options[index] = text;
+		//TODO: Not strictly required, since it's in-memory.
+		return await db.put(questionId, q);
 	},
 };
 
@@ -31,12 +41,7 @@ const db = {
 const q: Question = {
 	questionId: "question123",
 	question: "What day is it?",
-	options: [
-		{ questionOptionId: "questionOption1", text: "Monday" },
-		{ questionOptionId: "questionOption2", text: "Tuesday" },
-		{ questionOptionId: "questionOption3", text: "Wednesday" },
-		{ questionOptionId: "questionOption4", text: "Thursday" },
-	],
+	options: ["Monday", "Tuesday", "Wednesday", "Thursday"],
 };
 (async () => {
 	db.put(q.questionId, q);
@@ -45,156 +50,151 @@ const q: Question = {
 interface Question {
 	questionId: string
 	question: string
-	options: Array<QuestionOption>
+	options: Array<string>
 }
 
-interface QuestionOption {
-	questionOptionId: string
-	text: string
-}
-
-interface Answers {
-	answerId: string
-}
-
-const actionDelete = "actionDeleteOption";
 const actionAddOption = "actionAddOption";
+const actionSend = "actionSend";
+const actionCancel = "actionCancel";
+const actionQuestionOptionUpdated = "actionQuestionOptionUpdated";
 
 const createQuestionBlock = (q: Question): Array<KnownBlock> => [
-	questionTextBlock(q),
-	questionOptionsHeaderBlock,
-	...q.options.map(qo => questionOptionBlock(q, qo)),
-	questionOptionAddBlock,
+	createQuestionHeader(q),
+	...q.options.map((qo, i) => createQuestionOptionBlock(qo, q.questionId, i)),
+	createQuestionOptionAddBlock(q.questionId),
 	dividerBlock,
-	sendCancelBlock,
+	createSendCancelBlock(q.questionId),
 ];
 
-const questionTextBlock = (q: Question): KnownBlock => ({
-	"type": "input",
-	"element": {
-		"type": "plain_text_input",
-		"action_id": "question",
-	},
-	"label": {
-		"type": "plain_text",
-		"text": "Question",
-		"emoji": true
+const createQuestionHeader = (q: Question): KnownBlock => ({
+	type: "header",
+	text: {
+		type: "plain_text",
+		text: q.question,
+		emoji: true
 	}
 });
 
-const questionOptionsHeaderBlock: KnownBlock = {
-	"type": "header",
-	"text": {
-		"type": "plain_text",
-		"text": "Options",
-		"emoji": true
-	}
-};
-
-const questionOptionBlock = (q: Question, o: QuestionOption): KnownBlock => ({
-	"type": "section",
-	"text": {
-		"type": "mrkdwn",
-		"text": o.text,
-	},
-	"accessory": {
-		"type": "button",
-		"text": {
-			"type": "plain_text",
-			"text": ":bin:",
-			"emoji": true
+const createQuestionOptionBlock = (text: string, questionId: string, index: number): KnownBlock => ({
+	block_id: `questionOption/${questionId}/${index}`,
+	type: "input",
+	element: {
+		type: "plain_text_input",
+		initial_value: text,
+		action_id: actionQuestionOptionUpdated,
+		dispatch_action_config: {
+			trigger_actions_on: ['on_character_entered'],
 		},
-		"value": getQuestionOptionBlockValueFromQuestionOptionId(q.questionId, o.questionOptionId),
-		"action_id": actionDelete,
+	},
+	dispatch_action: true,
+	label: {
+		type: "plain_text",
+		text: `Option ${index + 1}`,
+		emoji: true,
 	}
 })
 
-interface QuestionIds {
-	questionId: string
-	questionOptionId: string
-}
-
-const getQuestionOptionIdFromQuestionOptionBlockValue = (v: string): QuestionIds => {
-	const ids = v.split("/");
-	return {
-		questionId: ids[0],
-		questionOptionId: ids[1],
-	}
-};
-const getQuestionOptionBlockValueFromQuestionOptionId = (questionId: string, questionOptionId: string): string => `${questionId}/${questionOptionId}`;
-
-const questionOptionAddBlock: KnownBlock = {
-	"dispatch_action": true,
-	"type": "input",
-	"element": {
-		"type": "plain_text_input",
-		"action_id": actionAddOption,
-	},
-	"label": {
-		"type": "plain_text",
-		"text": "Add option",
-		"emoji": true
-	}
-}
-
-const dividerBlock: KnownBlock = { "type": "divider" };
-
-const sendCancelBlock: KnownBlock = {
-	"type": "actions",
-	"elements": [
+const createQuestionOptionAddBlock = (questionId: string): KnownBlock => ({
+	type: "actions",
+	elements: [
 		{
-			"type": "button",
-			"text": {
+			type: "button",
+			text: {
+				type: "plain_text",
+				text: "Add option",
+				emoji: true
+			},
+			value: questionId,
+			action_id: actionAddOption,
+		},
+	],
+});
+
+const dividerBlock: KnownBlock = { type: "divider" };
+
+const createSendCancelBlock = (questionId: string): KnownBlock => ({
+	type: "actions",
+	elements: [
+		{
+			action_id: actionSend,
+			type: "button",
+			text: {
 				"type": "plain_text",
 				"emoji": true,
 				"text": "Send"
 			},
-			"style": "primary",
-			"value": "send"
+			style: "primary",
+			value: questionId,
 		},
 		{
-			"type": "button",
-			"text": {
-				"type": "plain_text",
-				"emoji": true,
-				"text": "Cancel"
+			action_id: actionCancel,
+			type: "button",
+			text: {
+				type: "plain_text",
+				emoji: true,
+				text: "Cancel"
 			},
-			"style": "danger",
-			"value": "cancel"
+			style: "danger",
+			value: questionId,
 		}
 	]
-}
+});
 
 app.message('hello', async (params: SlackEventMiddlewareArgs<"message">) => {
 	const question = await db.get("question123");
 	if (!question) {
 		return
 	}
-	if (params.message.subtype === undefined) {
-		await params.say({
-			blocks: createQuestionBlock(question),
-		});
+	if (params.message.subtype !== undefined) {
+		return
 	}
+	await params.say({
+		text: "Preparing a question...",
+		blocks: createQuestionBlock(question),
+	});
 });
 
-app.action(actionDelete, async ({ ack, body, respond }) => {
+app.action(actionQuestionOptionUpdated, async ({ ack, body }) => {
 	await ack();
 	if (body.type != "block_actions") {
 		return;
 	}
 	for (const action of body.actions) {
-		if (action.type == "button") {
-			const id = getQuestionOptionIdFromQuestionOptionBlockValue(action.value);
-			await db.deleteQuestionOption(id.questionId, id.questionOptionId);
-			const question = await db.get(id.questionId);
-			if (!question) {
-				return
-			}
+		if (action.type != "plain_text_input") {
+			continue;
+		}
+		const blockParts = action.block_id.split("/");
+		const questionId = blockParts[1];
+		const index = parseInt(blockParts[2]);
+		await db.setQuestionOption(questionId, index, action.value);
+	}
+});
+
+app.action(actionAddOption, async ({ ack, body, respond }) => {
+	await ack();
+	if (body.type != "block_actions") {
+		return;
+	}
+	for (const action of body.actions) {
+		if (action.type != "button") {
+			continue;
+		}
+		const question = await db.addQuestionOption(action.value);
+		if (!question) {
+			return
 		}
 	}
 	await respond({
 		blocks: createQuestionBlock(q),
 		replace_original: true,
+	});
+});
+
+app.action(actionCancel, async ({ ack, respond }) => {
+	await ack();
+	await respond({
+		text: "Cancelled...",
+		delete_original: true,
 	});
 });
 
