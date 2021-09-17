@@ -198,6 +198,29 @@ app.action(actionCancel, async ({ ack, respond }) => {
 	});
 });
 
+app.action(actionSend, async ({ ack, body, respond, say }) => {
+	await ack();
+	if (body.type != "block_actions") {
+		return;
+	}
+	for (const action of body.actions) {
+		if (action.type != "button") {
+			continue;
+		}
+		const question = await db.get(action.value);
+		if (!question) {
+			return
+		}
+	}
+	await respond({
+		text: "Sent...",	
+		replace_original: true,
+	});
+	await say({
+		text: `@${body.user.name} wanted to post a poll...`,
+	});
+});
+
 (async () => {
 	const port = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 	await app.start(port);
