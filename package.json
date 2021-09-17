@@ -1,0 +1,15 @@
+{
+  "name": "qq",
+  "version": "1.0.0",
+  "description": "Quick question bot.",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@slack/bolt": "^3.6.0",
+    "typescript": "^4.4.3"
+  }
+}
