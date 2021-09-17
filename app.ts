@@ -37,16 +37,6 @@ const db = {
 	},
 };
 
-// insert an example question.
-const q: Question = {
-	questionId: "question123",
-	question: "What day is it?",
-	options: ["Monday", "Tuesday", "Wednesday", "Thursday"],
-};
-(async () => {
-	db.put(q.questionId, q);
-})();
-
 interface Question {
 	questionId: string
 	question: string
@@ -140,15 +130,16 @@ const createSendCancelBlock = (questionId: string): KnownBlock => ({
 	]
 });
 
-app.message('hello', async (params: SlackEventMiddlewareArgs<"message">) => {
-	const question = await db.get("question123");
-	if (!question) {
-		return
-	}
-	if (params.message.subtype !== undefined) {
-		return
-	}
-	await params.say({
+app.command("/qq", async ({ ack, command, say }) => {
+	await ack();
+	// TODO: Generate an ID properly.
+	const question: Question = {
+		questionId: `${(new Date()).getDate()}`,
+		question: command.text,
+		options: ["", "", ""], // Start with some empty options.
+	};
+	await db.put(question.questionId, question);
+	await say({
 		text: "Preparing a question...",
 		blocks: createQuestionBlock(question),
 	});
@@ -183,11 +174,11 @@ app.action(actionAddOption, async ({ ack, body, respond }) => {
 		if (!question) {
 			return
 		}
+		await respond({
+			blocks: createQuestionBlock(question),
+			replace_original: true,
+		});
 	}
-	await respond({
-		blocks: createQuestionBlock(q),
-		replace_original: true,
-	});
 });
 
 app.action(actionCancel, async ({ ack, respond }) => {
@@ -213,7 +204,7 @@ app.action(actionSend, async ({ ack, body, respond, say }) => {
 		}
 	}
 	await respond({
-		text: "Sent...",	
+		text: "Sent...",
 		replace_original: true,
 	});
 	await say({
