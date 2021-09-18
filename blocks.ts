@@ -11,18 +11,24 @@ export const actions = {
 
 export const createQuestionBlock = (q: Question): Array<KnownBlock> => [
 	createQuestionHeader(q),
-	...q.options.map((qo, i) => createQuestionOptionBlock(qo, q.questionId, i)),
+	...q.options.map((qo, i) => createQuestionOptionBlock(qo.text, q.questionId, i)),
 	createQuestionOptionAddBlock(q.questionId),
 	dividerBlock,
 	createSendCancelBlock(q.questionId),
 ];
 
-
-export const createOptionsBlock = (q: Question): Array<KnownBlock> => [
+export const createOptionsBlock = (q: Question): Array<KnownBlock> => {
+	const total = q.options.map(o => o.selected).reduce((prev, current) => prev + current);
+	return 	[
 	createQuestionHeader(q),
 	createPostedByText(q),
-	...q.options.map((qo, i) => createAnswerSelectOptionBlock(qo, q.questionId, i)),
+	...q.options.flatMap((qo, i) => [
+		createAnswerSelectOptionBlock(qo.text, q.questionId, i),
+		createAnswerViewResultName(qo.selected, total),
+		createAnswerViewResultBar(qo.selected, total),
+	]),
 ];
+};
 
 const createQuestionHeader = (q: Question): KnownBlock => ({
 	type: "header",
@@ -127,3 +133,26 @@ const createAnswerSelectOptionBlock = (text: string, questionId: string, index: 
 		action_id: actions.onAnswerSelected,
 	}
 })
+
+const createAnswerViewResultName = (selected: number, total: number): KnownBlock => {
+	const pc = Math.round((selected / total) * 1000) / 10;
+	return {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: `${selected} out of ${total} (${pc}%)`
+		}
+	};
+};
+
+const createAnswerViewResultBar = (selected: number, total: number): KnownBlock => {
+	const pc = (selected / total) * 100;
+	const bar = ":white_medium_square:".repeat(pc / 10);
+	return {
+		type: "section",
+		text: {
+			type: "mrkdwn",
+			text: ` ${bar}`
+		}
+	};
+};

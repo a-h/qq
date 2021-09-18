@@ -7,17 +7,21 @@ const app = new App({
 	signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 
-app.command("/qq", async ({ ack, command, say }) => {
+app.command("/qq", async ({ ack, command, respond }) => {
 	await ack();
 	// TODO: Generate an ID properly.
 	const question: Question = {
 		author: command.user_name,
 		questionId: `${(new Date()).getDate()}`,
 		question: command.text,
-		options: ["", "", ""], // Start with some empty options.
+		options: [ 
+			{ text: "", selected: 0 }, 
+			{ text: "", selected: 0 },
+			{ text: "", selected: 0 }
+		],
 	};
 	await db.put(question.questionId, question);
-	await say({
+	await respond({
 		text: "Preparing a question...",
 		blocks: createQuestionBlock(question),
 	});
@@ -86,6 +90,33 @@ app.action(actions.onSend, async ({ ack, body, respond, say }) => {
 		});
 		await say({
 			text: `@${body.user.name} has posted a quick question...`,
+			blocks: createOptionsBlock(question),
+		});
+	}
+});
+
+app.action(actions.onAnswerSelected, async ({ ack, body, respond, say }) => {
+	await ack();
+	if (body.type != "block_actions") {
+		return;
+	}
+	for (const action of body.actions) {
+		if (action.type != "button") {
+			continue;
+		}
+		const blockParts = action.value.split("/");
+		const questionId = blockParts[1];
+		const index = parseInt(blockParts[2]);
+		console.log(`${body.user.id} is answering question ${questionId} with answer ${index}`)
+		const question = await db.answer(body.user.id, questionId, index);
+		if (!question) {
+			console.log(`question not found...`)
+			return
+		}
+		await respond({
+			response_type: "in_channel",
+			replace_original: true,
+			text: `@${body.user.name} has selected an answer...`,
 			blocks: createOptionsBlock(question),
 		});
 	}
