@@ -1,0 +1,48 @@
+{
+	"blocks": [
+		{
+			"type": "header",
+			"text": {
+				"type": "plain_text",
+				"text": "What day is it?",
+				"emoji": true
+			}
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "plain_text",
+					"text": "Posted by: K A Applegate",
+					"emoji": true
+				}
+			]
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "mrkdwn",
+					"text": "Monday"
+				},
+				{
+					"type": "mrkdwn",
+					"text": ":white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square::white_medium_square: 91%"
+				}
+			]
+		},
+		{
+			"type": "context",
+			"elements": [
+				{
+					"type": "mrkdwn",
+					"text": "Tuesday"
+				},
+				{
+					"type": "mrkdwn",
+					"text": ":white_medium_square::white_medium_square::white_medium_square: 31%"
+				}
+			]
+		}
+	]
+}
