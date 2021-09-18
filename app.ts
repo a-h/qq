@@ -14,8 +14,8 @@ app.command("/qq", async ({ ack, command, respond }) => {
 		author: command.user_name,
 		questionId: `${(new Date()).getDate()}`,
 		question: command.text,
-		options: [ 
-			{ text: "", selected: 0 }, 
+		options: [
+			{ text: "", selected: 0 },
 			{ text: "", selected: 0 },
 			{ text: "", selected: 0 }
 		],
@@ -95,7 +95,7 @@ app.action(actions.onSend, async ({ ack, body, respond, say }) => {
 	}
 });
 
-app.action(actions.onAnswerSelected, async ({ ack, body, respond, say }) => {
+app.action(actions.onAnswerSelected, async ({ ack, body, respond }) => {
 	await ack();
 	if (body.type != "block_actions") {
 		return;

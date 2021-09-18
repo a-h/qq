@@ -19,15 +19,15 @@ export const createQuestionBlock = (q: Question): Array<KnownBlock> => [
 
 export const createOptionsBlock = (q: Question): Array<KnownBlock> => {
 	const total = q.options.map(o => o.selected).reduce((prev, current) => prev + current);
-	return 	[
-	createQuestionHeader(q),
-	createPostedByText(q),
-	...q.options.flatMap((qo, i) => [
-		createAnswerSelectOptionBlock(qo.text, q.questionId, i),
-		createAnswerViewResultName(qo.selected, total),
-		createAnswerViewResultBar(qo.selected, total),
-	]),
-];
+	return [
+		createQuestionHeader(q),
+		createPostedByText(q),
+		...q.options.flatMap((qo, i) => [
+			createAnswerSelectOptionBlock(qo.text, q.questionId, i),
+			createAnswerViewResultName(qo.selected, total),
+			createAnswerViewResultBar(qo.selected, total),
+		]),
+	];
 };
 
 const createQuestionHeader = (q: Question): KnownBlock => ({
