@@ -27,7 +27,7 @@ app.command("/qq", async ({ ack, command, respond }) => {
 	});
 });
 
-app.action(actions.onQuestionOptionUpdated, async ({ ack, body }) => {
+app.action(actions.onOptionUpdated, async ({ ack, body }) => {
 	await ack();
 	if (body.type != "block_actions") {
 		return;
@@ -95,7 +95,7 @@ app.action(actions.onSend, async ({ ack, body, respond, say }) => {
 	}
 });
 
-app.action(actions.onAnswerSelected, async ({ ack, body, respond }) => {
+app.action(actions.onOptionSelected, async ({ ack, body, respond }) => {
 	await ack();
 	if (body.type != "block_actions") {
 		return;

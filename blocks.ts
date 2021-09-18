@@ -3,10 +3,10 @@ import { Question } from "./db";
 
 export const actions = {
 	onAddOption: "onAddOption",
-	onQuestionOptionUpdated: "onQuestionOptionUpdated",
+	onOptionUpdated: "onOptionUpdated",
 	onSend: "onSend",
 	onCancel: "onCancel",
-	onAnswerSelected: "onAnswerSelected",
+	onOptionSelected: "onOptionSelected",
 }
 
 export const createQuestionBlock = (q: Question): Array<KnownBlock> => [
@@ -91,7 +91,7 @@ const createQuestionOptionBlock = (text: string, questionId: string, index: numb
 	element: {
 		type: "plain_text_input",
 		initial_value: text,
-		action_id: actions.onQuestionOptionUpdated,
+		action_id: actions.onOptionUpdated,
 		dispatch_action_config: {
 			trigger_actions_on: ['on_character_entered'],
 		},
@@ -130,7 +130,7 @@ const createAnswerSelectOptionBlock = (text: string, questionId: string, index: 
 			emoji: true
 		},
 		value: `questionOption/${questionId}/${index}`,
-		action_id: actions.onAnswerSelected,
+		action_id: actions.onOptionSelected,
 	}
 })
 
