@@ -8,7 +8,7 @@ export const db = {
 		mockDb.set(id, q);
 		return q;
 	},
-	addQuestionOption: async (questionId: string): Promise<Question> => {
+	addQuestionOption: async (userId: string, questionId: string): Promise<Question> => {
 		//TODO: This mock example isn't thread safe.
 		const q = await db.get(questionId);
 		if (!q) {
@@ -18,7 +18,7 @@ export const db = {
 		//TODO: Not strictly required, since it's in-memory.
 		return await db.put(questionId, q);
 	},
-	setQuestionOption: async (questionId: string, index: number, text: string): Promise<Question> => {
+	setQuestionOption: async (userId: string, questionId: string, index: number, text: string): Promise<Question> => {
 		//TODO: This mock example isn't thread safe.
 		const q = await db.get(questionId);
 		if (!q) {
@@ -29,7 +29,6 @@ export const db = {
 		return await db.put(questionId, q);
 	},
 	answer: async (userId: string, questionId: string, index: number): Promise<Question> => {
-		
 		//TODO: This mock example isn't thread safe.
 		const q = await db.get(questionId);
 		if (!q) {
@@ -41,6 +40,30 @@ export const db = {
 	},
 };
 
+// SQL thinking...
+// Table questions {
+  //questionId int [pk, increment]
+  //authorId int [ref: > users.userId]
+  //question varchar(max)
+//}
+
+//Table options {
+  //optionId int [pk, increment]
+  //questionId int [ref: > questions.questionId]
+  //optionText varchar(max)
+ //}
+ 
+//Table selections {
+   //selectionId int [pk, increment]
+   //userId int [ref: > users.userId]
+   //optionId int [ref: > options.optionId]
+//}
+
+//Table users {
+   //userId int [pk, increment]
+   //name varchar(max)
+//}
+
 export interface Question {
 	author: string
 	questionId: string
@@ -51,4 +74,28 @@ export interface Question {
 export interface Option {
 	text: string
 	selected: number
+}
+
+interface QuestionRecord {
+	pk: string
+	sk: string
+	author: string
+	questionId: string
+	question: string
+}
+
+interface OptionRecord {
+	pk: string
+	sk: string
+	index: number
+	text: string
+	selected: number
+}
+
+interface SelectionRecord {
+	pk: string
+	sk: string
+	questionId: string
+	userId: string
+	selectedIndex: number
 }
