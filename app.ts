@@ -1,6 +1,7 @@
 import { App } from '@slack/bolt';
 import { actions, createOptionsBlock, createQuestionBlock } from './blocks';
-import { db, Question } from './db';
+import * as db from './db';
+import { createQuestion } from './db';
 
 const app = new App({
 	token: process.env.SLACK_BOT_TOKEN,
@@ -9,17 +10,9 @@ const app = new App({
 
 app.command("/qq", async ({ ack, command, respond }) => {
 	await ack();
-	// TODO: Generate an ID properly.
-	const question: Question = {
-		author: command.user_name,
-		questionId: `${(new Date()).getDate()}`,
-		question: command.text,
-		options: [
-			{ text: "", selected: 0 },
-			{ text: "", selected: 0 },
-			{ text: "", selected: 0 }
-		],
-	};
+	const author = command.user_name;
+	const questionText = command.text;
+	const question = createQuestion(author, questionText);
 	await db.put(question.questionId, question);
 	await respond({
 		text: "Preparing a question...",
@@ -39,7 +32,7 @@ app.action(actions.onOptionUpdated, async ({ ack, body }) => {
 		const blockParts = action.block_id.split("/");
 		const questionId = blockParts[1];
 		const index = parseInt(blockParts[2]);
-		await db.setQuestionOption(questionId, index, action.value);
+		await db.setQuestionOption(body.user.name, questionId, index, action.value);
 	}
 });
 
@@ -52,7 +45,7 @@ app.action(actions.onAddOption, async ({ ack, body, respond }) => {
 		if (action.type != "button") {
 			continue;
 		}
-		const question = await db.addQuestionOption(action.value);
+		const question = await db.addQuestionOption(body.user.name, action.value);
 		if (!question) {
 			return
 		}
@@ -108,7 +101,8 @@ app.action(actions.onOptionSelected, async ({ ack, body, respond }) => {
 		const questionId = blockParts[1];
 		const index = parseInt(blockParts[2]);
 		console.log(`${body.user.id} is answering question ${questionId} with answer ${index}`)
-		const question = await db.answer(body.user.id, questionId, index);
+		await db.answer(body.user.id, questionId, index);
+		const question = await db.get(questionId);
 		if (!question) {
 			console.log(`question not found...`)
 			return
