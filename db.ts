@@ -48,25 +48,19 @@ export interface Option {
 	selected: number
 }
 
-interface QuestionRecord {
-	pk: string
-	sk: string
+interface QuestionRecord extends Record {
 	author: string
 	questionId: string
 	question: string
 }
 
-interface OptionRecord {
-	pk: string
-	sk: string
+interface OptionRecord extends Record {
 	index: number
 	text: string
 	selected: number
 }
 
-interface AnswerRecord {
-	pk: string
-	sk: string
+interface AnswerRecord extends Record {
 	questionId: string
 	userId: string
 	selectedIndex: number
