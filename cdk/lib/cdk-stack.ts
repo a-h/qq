@@ -6,13 +6,25 @@ import { AttributeType, BillingMode } from '@aws-cdk/aws-dynamodb';
 import * as apigateway from '@aws-cdk/aws-apigateway';
 import * as logs from '@aws-cdk/aws-logs';
 
+export interface StackProps extends cdk.StackProps {
+  slackBotToken: string,
+  slackSigningSecret: string,
+};
+
 export class CdkStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(scope: cdk.Construct, id: string, props: StackProps) {
     super(scope, id, props);
 
-    const table = new dynamodb.Table(this, "table", {
+    if(!props.slackBotToken) {
+      throw new Error("slackBotToken has not been set");
+    }
+    if(!props.slackSigningSecret) {
+      throw new Error("slackSigningSecret has not been set");
+    }
+
+    const table = new dynamodb.Table(this, "questionsTable", {
       partitionKey: {
-        name: "id",
+        name: "pk",
         type: AttributeType.STRING,
       },
       sortKey: {
@@ -24,7 +36,9 @@ export class CdkStack extends cdk.Stack {
 
     const app = new lambda.NodejsFunction(this, "appFunction", {
       environment: {
-        TABLE_NAME: table.tableName,
+        QUESTIONS_TABLE_NAME: table.tableName,
+        SLACK_BOT_TOKEN: props.slackBotToken,
+        SLACK_SIGNING_SECRET: props.slackSigningSecret,
       },
       entry: path.join(__dirname, "../../lambda/handler.ts"),
       logRetention: logs.RetentionDays.ONE_MONTH,

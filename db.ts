@@ -2,7 +2,7 @@ import { DocumentClient } from "aws-sdk/clients/dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 
 export const config = {
-	tableName: "questions",
+	tableName: process.env.QUESTIONS_TABLE_NAME ?? "questions",
 	client: new DocumentClient(),
 };
 
