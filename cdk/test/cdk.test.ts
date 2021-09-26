@@ -1,13 +1,14 @@
-import { expect as expectCDK, matchTemplate, MatchStyle } from '@aws-cdk/assert';
+import { expect as expectCDK, haveResource } from '@aws-cdk/assert';
 import * as cdk from '@aws-cdk/core';
 import * as Cdk from '../lib/cdk-stack';
 
-test('Empty Stack', () => {
+describe('Question stack', () => {
+  it("includes a table", () => {
     const app = new cdk.App();
-    // WHEN
-    const stack = new Cdk.CdkStack(app, 'MyTestStack');
-    // THEN
-    expectCDK(stack).to(matchTemplate({
-      "Resources": {}
-    }, MatchStyle.EXACT))
+    const stack = new Cdk.CdkStack(app, 'MyTestStack', {
+      slackBotToken: "fake_token",
+      slackSigningSecret: "fake_secret",
+    });
+    expectCDK(stack).to(haveResource("AWS::DynamoDB::Table", {}))
+  });
 });
