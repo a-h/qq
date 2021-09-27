@@ -11,7 +11,7 @@ export const actions = {
 
 export const createQuestionBlock = (q: Question): Array<KnownBlock> => [
 	createQuestionHeader(q),
-	...q.options.map((qo, i) => createQuestionOptionBlock(qo.text, q.questionId, i)),
+	...q.options.map(qo => createQuestionOptionBlock(qo.text, q.questionId, qo.index)),
 	createQuestionOptionAddBlock(q.questionId),
 	dividerBlock,
 	createSendCancelBlock(q.questionId),
@@ -22,8 +22,8 @@ export const createOptionsBlock = (q: Question): Array<KnownBlock> => {
 	return [
 		createQuestionHeader(q),
 		createPostedByText(q),
-		...q.options.flatMap((qo, i) => [
-			createAnswerSelectOptionBlock(qo.text, q.questionId, i),
+		...q.options.filter(o => o.text).flatMap(qo => [
+			createAnswerSelectOptionBlock(qo.text, q.questionId, qo.index),
 			createAnswerViewResultName(qo.selected, total),
 			createAnswerViewResultBar(qo.selected, total),
 		]),
@@ -135,7 +135,7 @@ const createAnswerSelectOptionBlock = (text: string, questionId: string, index: 
 })
 
 const createAnswerViewResultName = (selected: number, total: number): KnownBlock => {
-	const pc = Math.round((selected / total) * 1000) / 10;
+	const pc = total > 0 ? Math.round((selected / total) * 1000) / 10 : 0;
 	return {
 		type: "section",
 		text: {

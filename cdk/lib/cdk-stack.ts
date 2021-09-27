@@ -5,6 +5,7 @@ import * as path from 'path';
 import { AttributeType, BillingMode } from '@aws-cdk/aws-dynamodb';
 import * as apigateway from '@aws-cdk/aws-apigateway';
 import * as logs from '@aws-cdk/aws-logs';
+import { Tracing } from '@aws-cdk/aws-lambda';
 
 export interface StackProps extends cdk.StackProps {
   slackBotToken: string,
@@ -42,6 +43,7 @@ export class CdkStack extends cdk.Stack {
       },
       entry: path.join(__dirname, "../../lambda/handler.ts"),
       logRetention: logs.RetentionDays.ONE_MONTH,
+      tracing: Tracing.ACTIVE,
     });
     table.grantReadWriteData(app);
 
