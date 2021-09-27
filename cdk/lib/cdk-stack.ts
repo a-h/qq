@@ -6,6 +6,7 @@ import { AttributeType, BillingMode } from '@aws-cdk/aws-dynamodb';
 import * as apigateway from '@aws-cdk/aws-apigateway';
 import * as logs from '@aws-cdk/aws-logs';
 import { Tracing } from '@aws-cdk/aws-lambda';
+import { Duration } from '@aws-cdk/core';
 
 export interface StackProps extends cdk.StackProps {
   slackBotToken: string,
@@ -15,13 +16,6 @@ export interface StackProps extends cdk.StackProps {
 export class CdkStack extends cdk.Stack {
   constructor(scope: cdk.Construct, id: string, props: StackProps) {
     super(scope, id, props);
-
-    if(!props.slackBotToken) {
-      throw new Error("slackBotToken has not been set");
-    }
-    if(!props.slackSigningSecret) {
-      throw new Error("slackSigningSecret has not been set");
-    }
 
     const table = new dynamodb.Table(this, "questionsTable", {
       partitionKey: {
@@ -44,6 +38,8 @@ export class CdkStack extends cdk.Stack {
       entry: path.join(__dirname, "../../lambda/handler.ts"),
       logRetention: logs.RetentionDays.ONE_MONTH,
       tracing: Tracing.ACTIVE,
+      memorySize: 1024,
+      timeout: Duration.seconds(10),
     });
     table.grantReadWriteData(app);
 
